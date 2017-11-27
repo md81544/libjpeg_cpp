@@ -234,9 +234,48 @@ void Image::shrink( size_t newWidth )
         return;
     }
 
+    // We process the original bitmap line by line rather than
+    // calling getAverage on every (new) pixel to ensure we make the
+    // most of data already in existing cache lines & hopefully
+    // allow branch prediction to work optimally :)
+
     double scaleFactor = static_cast<double>(newWidth) / m_width;
     size_t newHeight = scaleFactor * m_height;
     size_t boxSize = m_width / newWidth;
+    std::vector<std::vector<uint8_t>> vecNewBitmap;
+    vecNewBitmap.reserve( newHeight );
+    std::vector<size_t> runningTotals( newWidth );
+    // The number of rows / columns we average may be less than
+    // the actual width / height of the image (they may not divide
+    // exactly by boxSize - we're not interested in the stuff at the
+    // end or bottom in this case)
+    size_t rows = m_height / boxSize;
+    size_t cols = m_width  / boxSize;
+    for ( size_t row = 0; row < rows; ++row )
+    {
+        for ( size_t col = 0; col < cols; ++col )
+        {
+            runningTotals[ col / boxSize ] += m_bitmapData[row][col];
+        }
+        if ( row % boxSize == boxSize - 1 )
+        {
+            std::vector<uint8_t> newLine;
+            for ( size_t i = 0; i < newWidth; ++i )
+            {
+                newLine.push_back( runningTotals[i] / ( boxSize * boxSize ) );
+                runningTotals[i] = 0;
+            }
+            vecNewBitmap.push_back( newLine );
+        }
+    }
+    m_bitmapData = vecNewBitmap;
+    m_height = m_bitmapData.size();
+    m_width = m_bitmapData[0].size() / m_pixelSize;
+
+    /*
+
+    // ----------------
+
     std::vector<std::vector<uint8_t>> vecNewBitmap;
     vecNewBitmap.reserve( newHeight );
 
@@ -259,6 +298,7 @@ void Image::shrink( size_t newWidth )
     m_bitmapData = vecNewBitmap;
     m_height = m_bitmapData.size();
     m_width = m_bitmapData[0].size() / m_pixelSize;
+    */
 }
 
 } // namespace jpeg
