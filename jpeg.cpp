@@ -241,29 +241,31 @@ void Image::shrink( size_t newWidth )
 
     double scaleFactor = static_cast<double>(newWidth) / m_width;
     size_t newHeight = scaleFactor * m_height;
-    size_t boxSize = m_width / newWidth;
     std::vector<std::vector<uint8_t>> vecNewBitmap;
     vecNewBitmap.reserve( newHeight );
-    std::vector<size_t> runningTotals( newWidth );
-    // The number of rows / columns we average may be less than
-    // the actual width / height of the image (they may not divide
-    // exactly by boxSize - we're not interested in the stuff at the
+
+    // Yes, I probably could do a rolling average
+    std::vector<size_t> runningTotals( newWidth * m_pixelSize );
+    std::vector<size_t> runningCounts( newWidth * m_pixelSize );
     // end or bottom in this case)
-    size_t rows = m_height / boxSize;
-    size_t cols = m_width  / boxSize;
-    for ( size_t row = 0; row < rows; ++row )
+    size_t oldRow = 0;
+    for ( size_t row = 0; row < m_height; ++row )
     {
-        for ( size_t col = 0; col < cols; ++col )
+        for ( size_t col = 0; col < m_width * m_pixelSize; ++col )
         {
-            runningTotals[ col / boxSize ] += m_bitmapData[row][col];
+            runningTotals[ col * scaleFactor ] += m_bitmapData[row][col];
+            ++runningCounts[ col * scaleFactor ];
         }
-        if ( row % boxSize == boxSize - 1 )
+        if ( static_cast<size_t>( scaleFactor * row ) > oldRow )
         {
+            //__asm__("int $3"); // break
+            oldRow = scaleFactor * row;
             std::vector<uint8_t> newLine;
-            for ( size_t i = 0; i < newWidth; ++i )
+            for ( size_t i = 0; i < newWidth * m_pixelSize; ++i )
             {
-                newLine.push_back( runningTotals[i] / ( boxSize * boxSize ) );
+                newLine.push_back( runningTotals[i] / runningCounts[i] );
                 runningTotals[i] = 0;
+                runningCounts[i] = 0;
             }
             vecNewBitmap.push_back( newLine );
         }
