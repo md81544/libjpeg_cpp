@@ -237,7 +237,9 @@ void Image::shrink( size_t newWidth )
     // We process the original bitmap line by line rather than
     // calling getAverage on every (new) pixel to ensure we make the
     // most of data already in existing cache lines & hopefully
-    // allow branch prediction to work optimally :)
+    // allow branch prediction to work optimally. This results
+    // in a significant speedup when shrinking a 6Mpx file (1.45s vs
+    // 450ms )
 
     double scaleFactor = static_cast<double>(newWidth) / m_width;
     size_t newHeight = scaleFactor * m_height;
@@ -247,7 +249,6 @@ void Image::shrink( size_t newWidth )
     // Yes, I probably could do a rolling average
     std::vector<size_t> runningTotals( newWidth * m_pixelSize );
     std::vector<size_t> runningCounts( newWidth * m_pixelSize );
-    // end or bottom in this case)
     size_t oldRow = 0;
     for ( size_t row = 0; row < m_height; ++row )
     {
@@ -258,7 +259,6 @@ void Image::shrink( size_t newWidth )
         }
         if ( static_cast<size_t>( scaleFactor * row ) > oldRow )
         {
-            //__asm__("int $3"); // break
             oldRow = scaleFactor * row;
             std::vector<uint8_t> newLine;
             for ( size_t i = 0; i < newWidth * m_pixelSize; ++i )
@@ -273,34 +273,6 @@ void Image::shrink( size_t newWidth )
     m_bitmapData = vecNewBitmap;
     m_height = m_bitmapData.size();
     m_width = m_bitmapData[0].size() / m_pixelSize;
-
-    /*
-
-    // ----------------
-
-    std::vector<std::vector<uint8_t>> vecNewBitmap;
-    vecNewBitmap.reserve( newHeight );
-
-    for ( size_t row = 0; row < newHeight; ++row )
-    {
-        std::vector<uint8_t> vec;
-        vec.reserve( newWidth * m_pixelSize );
-        for ( size_t col = 0; col < newWidth; ++col )
-        {
-            auto v = getAverage( col / scaleFactor, row / scaleFactor, boxSize );
-            vec.push_back( v[0] );
-            if ( v.size() == 3 )
-            {
-                vec.push_back( v[1] );
-                vec.push_back( v[2] );
-            }
-        }
-        vecNewBitmap.push_back( vec );
-    }
-    m_bitmapData = vecNewBitmap;
-    m_height = m_bitmapData.size();
-    m_width = m_bitmapData[0].size() / m_pixelSize;
-    */
 }
 
 } // namespace jpeg
