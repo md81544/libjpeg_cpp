@@ -254,13 +254,15 @@ void Image::shrink( size_t newWidth )
     {
         for ( size_t col = 0; col < m_width * m_pixelSize; ++col )
         {
-            runningTotals[ col * scaleFactor ] += m_bitmapData[row][col];
-            ++runningCounts[ col * scaleFactor ];
+            size_t idx = col * scaleFactor;
+            runningTotals[ idx ] += m_bitmapData[row][col];
+            ++runningCounts[ idx ];
         }
         if ( static_cast<size_t>( scaleFactor * row ) > oldRow )
         {
             oldRow = scaleFactor * row;
             std::vector<uint8_t> newLine;
+            newLine.reserve( newWidth * m_pixelSize );
             for ( size_t i = 0; i < newWidth * m_pixelSize; ++i )
             {
                 newLine.push_back( runningTotals[i] / runningCounts[i] );
