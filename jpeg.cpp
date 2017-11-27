@@ -241,7 +241,7 @@ void Image::shrink( size_t newWidth )
     // in a significant speedup when shrinking a 6Mpx file (1.45s vs
     // 450ms )
 
-    double scaleFactor = static_cast<double>(newWidth) / m_width;
+    float scaleFactor = static_cast<float>(newWidth) / m_width;
     size_t newHeight = scaleFactor * m_height;
     std::vector<std::vector<uint8_t>> vecNewBitmap;
     vecNewBitmap.reserve( newHeight );
@@ -254,7 +254,7 @@ void Image::shrink( size_t newWidth )
     {
         for ( size_t col = 0; col < m_width * m_pixelSize; ++col )
         {
-            size_t idx = col * scaleFactor;
+            size_t idx = scaleFactor * col;
             runningTotals[ idx ] += m_bitmapData[row][col];
             ++runningCounts[ idx ];
         }
