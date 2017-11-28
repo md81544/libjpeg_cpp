@@ -224,11 +224,10 @@ void Image::shrink( size_t newWidth )
     }
 
     // We process the original bitmap line by line rather than
-    // calling getAverage on every (new) pixel to ensure we make the
-    // most of data already in existing cache lines & hopefully
-    // allow branch prediction to work optimally. This results
-    // in a significant speedup when shrinking a 6Mpx file (1.45s vs
-    // 450ms )
+    // calling getAverage() on every (new) pixel to ensure we make the
+    // most of data already in existing cache lines & attempt to
+    // allow branch prediction to work optimally. This has resulted
+    // in a three-times speedup when shrinking a 21Mpx file.
 
     float scaleFactor = static_cast<float>(newWidth) / m_width;
     size_t newHeight = scaleFactor * m_height;
