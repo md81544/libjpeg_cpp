@@ -18,6 +18,8 @@ Image::Image( const std::string& fileName )
     m_compressInfo = std::make_unique<::jpeg_compress_struct>();
     m_errorMgr = std::make_unique<::jpeg_error_mgr>();
 
+    // Using fopen here ( and in save() ) because libjpeg expects
+    // a FILE pointer.
     FILE* infile = fopen(fileName.c_str(), "rb");
     if ( infile == NULL )
     {
@@ -25,6 +27,9 @@ Image::Image( const std::string& fileName )
     }
 
     m_decompressInfo->err = ::jpeg_std_error( m_errorMgr.get() );
+    // Note this usage of a lambda to provide our own error handler
+    // to libjpeg. If we do not suppluy a handler, and libjpeg hits
+    // a problem, it just prints the error message and calls exit().
     m_errorMgr->error_exit = [](::j_common_ptr cinfo)
         {
             char jpegLastErrorMsg[JMSG_LENGTH_MAX];
@@ -101,8 +106,9 @@ void Image::save( const std::string& fileName, int quality ) const
     for ( auto const& vecLine : m_bitmapData )
     {
         ::JSAMPROW rowPtr[1];
-        // Casting const-ness away because the jpeglib
-        // call expects a non-const pointer...
+        // Casting const-ness away here because the jpeglib
+        // call expects a non-const pointer. It presumably
+        // doesn't modify our data.
         rowPtr[0] = const_cast<::JSAMPROW>( vecLine.data() );
         ::jpeg_write_scanlines(
             m_compressInfo.get(),
