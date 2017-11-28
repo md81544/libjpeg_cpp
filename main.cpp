@@ -24,10 +24,15 @@ int main( int argc, char* argv[] )
     {
         using namespace marengo::jpeg;
         // Constructor expects a filename to load:
-        Image img( argv[1] );
+        Image imgOriginal( argv[1] );
+
+        // Copy construct a second version so we can
+        // shrink non-destructively. Not really necessary
+        // here, but just to show it can be done :)
+        Image img = imgOriginal;
 
         // Shrink proportionally to a specific width (in px)
-        img.shrink( 40 );
+        img.shrink( 60 );
 
         // Display the image in ASCII, just for fun.
         size_t height = img.getHeight();

@@ -5,9 +5,7 @@
 #include <string>
 #include <vector>
 
-// forward declarations of jpeglib structs
-struct jpeg_decompress_struct;
-struct jpeg_compress_struct;
+// forward declarations of jpeglib struct
 struct jpeg_error_mgr;
 
 namespace marengo
@@ -23,11 +21,15 @@ public:
     // or some other error is encountered.
     explicit Image( const std::string& fileName );
 
-    // For the time being, disallow any copy construction or assignment
-    Image(const Image& other)            = delete;
-    Image(Image&& other)                 = delete;
-    Image& operator=(const Image& other) = delete;
-    Image& operator=(Image&& other)      = delete;
+    // We can construct from an existing image object. This allows us
+    // to work on a copy (e.g. shrink then save) without affecting the
+    // original we have in memory.
+    Image( const Image& rhs );
+
+    // But assigment and move operations are currently disallowed
+    Image& operator=( const Image& ) = delete;
+    Image( Image&& )                 = delete;
+    Image& operator=( Image&& )      = delete;
 
     ~Image();
 
@@ -67,13 +69,14 @@ public:
     void shrink( size_t newWidth );
 
 private:
-    std::unique_ptr<::jpeg_decompress_struct>  m_decompressInfo;
-    std::unique_ptr<::jpeg_compress_struct>    m_compressInfo;
-    std::unique_ptr<::jpeg_error_mgr>          m_errorMgr;
+    // Note that m_errorMgr is a shared ptr and will be shared
+    // between objects if one copy constructs from another
+    std::shared_ptr<::jpeg_error_mgr>          m_errorMgr;
     std::vector<std::vector<uint8_t>>          m_bitmapData;
     size_t                                     m_width;
     size_t                                     m_height;
     size_t                                     m_pixelSize;
+    int                                        m_colourSpace;
 };
 
 } // namespace jpeg

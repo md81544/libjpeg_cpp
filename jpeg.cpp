@@ -14,9 +14,20 @@ namespace jpeg
 
 Image::Image( const std::string& fileName )
 {
-    m_decompressInfo = std::make_unique<::jpeg_decompress_struct>();
-    m_compressInfo = std::make_unique<::jpeg_compress_struct>();
-    m_errorMgr = std::make_unique<::jpeg_error_mgr>();
+    // Creating a custom deleter for the decompressInfo pointer
+    // to ensure ::jpeg_destroy_compress() gets called even if
+    // we throw out of this function.
+    auto dt = []( ::jpeg_decompress_struct *ds )
+            {
+                ::jpeg_destroy_decompress( ds );
+            };
+    std::unique_ptr<::jpeg_decompress_struct, decltype(dt)> decompressInfo(
+            new ::jpeg_decompress_struct,
+            dt );
+
+    // Note this is a shared pointer as we can share this 
+    // between objects which have copy constructed from each other
+    m_errorMgr = std::make_shared<::jpeg_error_mgr>();
 
     // Using fopen here ( and in save() ) because libjpeg expects
     // a FILE pointer.
@@ -26,7 +37,7 @@ Image::Image( const std::string& fileName )
         throw std::runtime_error( "Could not open " + fileName );
     }
 
-    m_decompressInfo->err = ::jpeg_std_error( m_errorMgr.get() );
+    decompressInfo->err = ::jpeg_std_error( m_errorMgr.get() );
     // Note this usage of a lambda to provide our own error handler
     // to libjpeg. If we do not suppluy a handler, and libjpeg hits
     // a problem, it just prints the error message and calls exit().
@@ -38,42 +49,52 @@ Image::Image( const std::string& fileName )
                 ( cinfo, jpegLastErrorMsg );
             throw std::runtime_error( jpegLastErrorMsg );
         };
-    ::jpeg_create_decompress( m_decompressInfo.get() );
+    ::jpeg_create_decompress( decompressInfo.get() );
 
     // Read the file:
-    ::jpeg_stdio_src( m_decompressInfo.get(), infile);
-    int rc = ::jpeg_read_header( m_decompressInfo.get(), TRUE );
+    ::jpeg_stdio_src( decompressInfo.get(), infile);
+    int rc = ::jpeg_read_header( decompressInfo.get(), TRUE );
     if (rc != 1)
     {
         throw std::runtime_error(
             "File does not seem to be a normal JPEG"
             );
     }
-    ::jpeg_start_decompress( m_decompressInfo.get() );
+    ::jpeg_start_decompress( decompressInfo.get() );
 
-    m_width     = m_decompressInfo->output_width;
-    m_height    = m_decompressInfo->output_height;
-    m_pixelSize = m_decompressInfo->output_components;
+    m_width       = decompressInfo->output_width;
+    m_height      = decompressInfo->output_height;
+    m_pixelSize   = decompressInfo->output_components;
+    m_colourSpace = decompressInfo->out_color_space;
 
     size_t row_stride = m_width * m_pixelSize;
 
     m_bitmapData.clear();
     m_bitmapData.reserve( m_height );
 
-    while ( m_decompressInfo->output_scanline < m_height )
+    while ( decompressInfo->output_scanline < m_height )
     {
         std::vector<uint8_t> vec(row_stride);
         uint8_t* p = vec.data();
-        ::jpeg_read_scanlines( m_decompressInfo.get(), &p, 1 );
+        ::jpeg_read_scanlines( decompressInfo.get(), &p, 1 );
         m_bitmapData.push_back( vec );
     }
-    ::jpeg_finish_decompress( m_decompressInfo.get() );
+    ::jpeg_finish_decompress( decompressInfo.get() );
+}
+
+// Copy constructor
+Image::Image( const Image& rhs )
+{
+    m_errorMgr      = rhs.m_errorMgr;
+    m_bitmapData    = rhs.m_bitmapData;
+    m_width         = rhs.m_width;
+    m_height        = rhs.m_height;
+    m_pixelSize     = rhs.m_pixelSize;
+    m_colourSpace   = rhs.m_colourSpace;
 }
 
 Image::~Image()
 {
-    ::jpeg_destroy_decompress( m_decompressInfo.get() );
-    ::jpeg_destroy_compress( m_compressInfo.get() );
 }
 
 void Image::save( const std::string& fileName, int quality ) const
@@ -93,16 +114,27 @@ void Image::save( const std::string& fileName, int quality ) const
             "Could not open " + fileName + " for writing"
             );
     }
-    ::jpeg_create_compress( m_compressInfo.get() );
-    ::jpeg_stdio_dest( m_compressInfo.get(), outfile);
-    m_compressInfo->image_width = m_width;
-    m_compressInfo->image_height = m_height;
-    m_compressInfo->input_components = m_pixelSize;
-    m_compressInfo->in_color_space = m_decompressInfo->out_color_space;
-    m_compressInfo->err = ::jpeg_std_error( m_errorMgr.get() );
-    ::jpeg_set_defaults( m_compressInfo.get() );
-    ::jpeg_set_quality( m_compressInfo.get(), quality, TRUE );
-    ::jpeg_start_compress( m_compressInfo.get(), TRUE);
+    // Creating a custom deleter for the compressInfo pointer
+    // to ensure ::jpeg_destroy_compress() gets called even if
+    // we throw out of this function.
+    auto dt = []( ::jpeg_compress_struct *cs )
+            {
+                ::jpeg_destroy_compress( cs );
+            };
+    std::unique_ptr<::jpeg_compress_struct, decltype(dt)> compressInfo(
+            new ::jpeg_compress_struct,
+            dt );
+    ::jpeg_create_compress( compressInfo.get() );
+    ::jpeg_stdio_dest( compressInfo.get(), outfile);
+    compressInfo->image_width = m_width;
+    compressInfo->image_height = m_height;
+    compressInfo->input_components = m_pixelSize;
+    compressInfo->in_color_space =
+        static_cast<::J_COLOR_SPACE>( m_colourSpace );
+    compressInfo->err = ::jpeg_std_error( m_errorMgr.get() );
+    ::jpeg_set_defaults( compressInfo.get() );
+    ::jpeg_set_quality( compressInfo.get(), quality, TRUE );
+    ::jpeg_start_compress( compressInfo.get(), TRUE);
     for ( auto const& vecLine : m_bitmapData )
     {
         ::JSAMPROW rowPtr[1];
@@ -111,12 +143,12 @@ void Image::save( const std::string& fileName, int quality ) const
         // doesn't modify our data.
         rowPtr[0] = const_cast<::JSAMPROW>( vecLine.data() );
         ::jpeg_write_scanlines(
-            m_compressInfo.get(),
+            compressInfo.get(),
             rowPtr,
             1
             );
     }
-    ::jpeg_finish_compress( m_compressInfo.get() );
+    ::jpeg_finish_compress( compressInfo.get() );
     fclose( outfile );
 }
 
