@@ -18,20 +18,11 @@ Image::Image( const std::string& fileName )
     m_compressInfo = std::make_unique<::jpeg_compress_struct>();
     m_errorMgr = std::make_unique<::jpeg_error_mgr>();
 
-    // For some reason using jpeg_stdio_src with an open FILE* just
-    // segfaults, so we are reading the file into memory and using
-    // jpeg_mem_src instead, which seems to work.
-    std::ifstream ifs;
-    ifs.open( fileName, std::ios::in | std::ios::binary );
-    if ( ! ifs )
+    FILE* infile = fopen(fileName.c_str(), "rb");
+    if ( infile == NULL )
     {
         throw std::runtime_error( "Could not open " + fileName );
     }
-    ifs.seekg( 0, std::ios::end );
-    size_t fileSize = ifs.tellg();
-    std::vector<uint8_t> rawImageData( fileSize );
-    ifs.seekg( 0 );
-    ifs.read( reinterpret_cast<char*>( rawImageData.data() ), fileSize );
 
     m_decompressInfo->err = ::jpeg_std_error( m_errorMgr.get() );
     m_errorMgr->error_exit = [](::j_common_ptr cinfo)
@@ -43,11 +34,9 @@ Image::Image( const std::string& fileName )
             throw std::runtime_error( jpegLastErrorMsg );
         };
     ::jpeg_create_decompress( m_decompressInfo.get() );
-    ::jpeg_mem_src(
-        m_decompressInfo.get(),
-        rawImageData.data(),
-        rawImageData.size()
-        );
+
+    // Read the file:
+    ::jpeg_stdio_src( m_decompressInfo.get(), infile);
     int rc = ::jpeg_read_header( m_decompressInfo.get(), TRUE );
     if (rc != 1)
     {
