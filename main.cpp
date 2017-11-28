@@ -14,7 +14,6 @@ void display( uint8_t luma )
 
 int main( int argc, char* argv[] )
 {
-    using namespace marengo::jpeg;
 
     if ( argc < 2 )
     {
@@ -23,12 +22,14 @@ int main( int argc, char* argv[] )
     }
     try
     {
+        using namespace marengo::jpeg;
+        // Constructor expects a filename to load:
         Image img( argv[1] );
 
         // Shrink proportionally to a specific width (in px)
-        img.shrink( 80 );
+        img.shrink( 40 );
 
-        // Display the image in ASCII
+        // Display the image in ASCII, just for fun.
         size_t height = img.getHeight();
         size_t width  = img.getWidth();
         for ( size_t y = 0; y < height; ++y )
@@ -43,8 +44,11 @@ int main( int argc, char* argv[] )
 
         std::cout << "\nImage height: " << img.getHeight();
         std::cout << "\nImage width : " << img.getWidth();
+        // Pixel "Size" is 3 bytes for colour images (i.e. R,G, & B)
+        // and 1 byte for monochrome.
         std::cout << "\nImage px sz : " << img.getPixelSize();
         std::cout << std::endl;
+        return 0;
     }
     catch( const std::exception& e )
     {
