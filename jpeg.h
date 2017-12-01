@@ -73,15 +73,18 @@ public:
     // equal to the existing width.
     void expand( size_t newWidth );
 
+    // Convenience function which either calls shrink or expand
+    void resize( size_t newWidth );
+
 private:
     // Note that m_errorMgr is a shared ptr and will be shared
     // between objects if one copy constructs from another
-    std::shared_ptr<::jpeg_error_mgr>          m_errorMgr;
-    std::vector<std::vector<uint8_t>>          m_bitmapData;
-    size_t                                     m_width;
-    size_t                                     m_height;
-    size_t                                     m_pixelSize;
-    int                                        m_colourSpace;
+    std::shared_ptr<::jpeg_error_mgr> m_errorMgr;
+    std::vector<std::vector<uint8_t>> m_bitmapData;
+    size_t                            m_width;
+    size_t                            m_height;
+    size_t                            m_pixelSize;
+    int                               m_colourSpace;
 };
 
 } // namespace jpeg

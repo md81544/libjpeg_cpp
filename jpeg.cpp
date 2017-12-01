@@ -340,6 +340,18 @@ void Image::expand( size_t newWidth )
     m_width = m_bitmapData[0].size() / m_pixelSize;
 }
 
+void Image::resize( size_t newWidth )
+{
+    if ( newWidth < m_width )
+    {
+        shrink( newWidth );
+    }
+    else if ( newWidth > m_width )
+    {
+        expand( newWidth );
+    }
+}
+
 
 } // namespace jpeg
 } // namespace marengo
