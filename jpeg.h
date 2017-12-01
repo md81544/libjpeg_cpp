@@ -68,6 +68,11 @@ public:
     // Simply averages pixels' values.
     void shrink( size_t newWidth );
 
+    // Expand (resize larger). Simply pads out pixels.
+    // Does nothing if the specified new width is less than, or
+    // equal to the existing width.
+    void expand( size_t newWidth );
+
 private:
     // Note that m_errorMgr is a shared ptr and will be shared
     // between objects if one copy constructs from another

@@ -308,6 +308,39 @@ void Image::shrink( size_t newWidth )
     m_width = m_bitmapData[0].size() / m_pixelSize;
 }
 
+void Image::expand( size_t newWidth )
+{
+    if ( newWidth <= m_width )
+    {
+        return;
+    }
+
+    float scaleFactor = static_cast<float>(newWidth) / m_width;
+    size_t newHeight = scaleFactor * m_height;
+    std::vector<std::vector<uint8_t>> vecNewBitmap;
+    vecNewBitmap.reserve( newHeight );
+
+    for ( size_t row = 0; row < newHeight; ++row )
+    {
+        size_t oldRow = row / scaleFactor;
+        std::vector<uint8_t> vecNewLine( newWidth * m_pixelSize );
+        for ( size_t col = 0; col < newWidth; ++col )
+        {
+            size_t oldCol = col / scaleFactor;
+            for ( size_t n = 0; n < m_pixelSize; ++n )
+            {
+                vecNewLine[ col * m_pixelSize + n ] =
+                    m_bitmapData[ oldRow ][ oldCol * m_pixelSize + n ];
+            }
+        }
+        vecNewBitmap.push_back( vecNewLine );
+    }
+    m_bitmapData = vecNewBitmap;
+    m_height = m_bitmapData.size();
+    m_width = m_bitmapData[0].size() / m_pixelSize;
+}
+
+
 } // namespace jpeg
 } // namespace marengo
 
