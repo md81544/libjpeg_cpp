@@ -261,6 +261,11 @@ void Image::shrink( size_t newWidth )
         return;
     }
 
+    if ( newWidth == 0 )
+    {
+        throw std::out_of_range( "New width cannot be zero" );
+    }
+
     // We process the original bitmap line by line rather than
     // calling getAverage() on every (new) pixel to ensure we make the
     // most of data already in existing cache lines & attempt to
