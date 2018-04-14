@@ -39,7 +39,7 @@ Image::Image( const std::string& fileName )
 
     decompressInfo->err = ::jpeg_std_error( m_errorMgr.get() );
     // Note this usage of a lambda to provide our own error handler
-    // to libjpeg. If we do not suppluy a handler, and libjpeg hits
+    // to libjpeg. If we do not supply a handler, and libjpeg hits
     // a problem, it just prints the error message and calls exit().
     m_errorMgr->error_exit = [](::j_common_ptr cinfo)
         {
