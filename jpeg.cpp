@@ -23,7 +23,8 @@ Image::Image( const std::string& fileName )
             };
     std::unique_ptr<::jpeg_decompress_struct, decltype(dt)> decompressInfo(
             new ::jpeg_decompress_struct,
-            dt );
+            dt
+            );
 
     // Note this is a shared pointer as we can share this 
     // between objects which have copy constructed from each other
@@ -31,8 +32,17 @@ Image::Image( const std::string& fileName )
 
     // Using fopen here ( and in save() ) because libjpeg expects
     // a FILE pointer.
-    FILE* infile = fopen(fileName.c_str(), "rb");
-    if ( infile == NULL )
+    // We store the FILE* in a unique_ptr so we can also use the custom
+    // deleter here to ensure fclose() gets called even if we throw.
+    auto fdt = []( FILE* fp )
+            {
+                fclose( fp );
+            };
+    std::unique_ptr<FILE, decltype(fdt)> infile(
+            fopen( fileName.c_str(), "rb" ),
+            fdt
+            );
+    if ( infile.get() == NULL )
     {
         throw std::runtime_error( "Could not open " + fileName );
     }
@@ -52,7 +62,8 @@ Image::Image( const std::string& fileName )
     ::jpeg_create_decompress( decompressInfo.get() );
 
     // Read the file:
-    ::jpeg_stdio_src( decompressInfo.get(), infile);
+    ::jpeg_stdio_src( decompressInfo.get(), infile.get() );
+
     int rc = ::jpeg_read_header( decompressInfo.get(), TRUE );
     if (rc != 1)
     {
