@@ -35,11 +35,11 @@ int main( int argc, char* argv[] )
         img.shrink( 60 );
 
         // Display the image in ASCII, just for fun.
-        size_t height = img.getHeight();
-        size_t width  = img.getWidth();
-        for ( size_t y = 0; y < height; ++y )
+        std::size_t height = img.getHeight();
+        std::size_t width  = img.getWidth();
+        for ( std::size_t y = 0; y < height; ++y )
         {
-            for ( size_t x = 0; x < width; ++x )
+            for ( std::size_t x = 0; x < width; ++x )
             {
                 uint8_t luma = img.getLuminance( x, y );
                 display( luma );
