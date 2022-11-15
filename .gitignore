@@ -33,5 +33,6 @@
 
 # Misc
 *.swp
-*.jpg
 perf.data*
+
+test
